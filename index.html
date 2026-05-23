@@ -522,7 +522,7 @@ async function doSearch(){
     S.searchResults=data.item.map(i=>({
       title:(i.title||'').replace(/\s*\d+권\s*$/,'').replace(/\s*\(\d+\)\s*$/,'').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
-      cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig'),
+      cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig').replace('http://','https://'),
       isbn:i.isbn13||i.isbn||'',
       desc:i.description||''
     }));
