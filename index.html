@@ -522,7 +522,7 @@ async function doSearch(){
     S.searchResults=data.item.map(i=>({
       title:(i.title||'').replace(/\s*\d+\s*$/, '').replace(/\s*\d+권.*$/, '').replace(/\s*[:\-]\s*\d+$/, '').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
-      cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig').replace('http://','https://'),
+      cover:(i.cover||'').replace('http://','https://').replace('coversum','cover200'),
       isbn:i.isbn13||i.isbn||'',
       desc:i.description||''
     }));
@@ -548,47 +548,32 @@ function pickResult(i){
 }
 
 async function fetchCover(isbn, title){
-  // 1차: Google Books - ISBN으로 검색
-  if(isbn){
-    try{
-      const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
-      const data=await res.json();
-      const img=data.items?.[0]?.volumeInfo?.imageLinks;
+  // 알라딘 이미지를 corsproxy로 base64 변환
+  const aladinUrl=S.addForm.cover;
+  if(!aladinUrl||!aladinUrl.includes('aladin'))return;
+  try{
+    const res=await fetch(`https://corsproxy.io/?${encodeURIComponent(aladinUrl)}`);
+    if(res.ok){
+      const blob=await res.blob();
+      const reader=new FileReader();
+      reader.onload=()=>{S.addForm.cover=reader.result;render();};
+      reader.readAsDataURL(blob);
+      return;
+    }
+  }catch(e){}
+  // fallback: Google Books 제목 검색
+  try{
+    const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&maxResults=3`);
+    const data=await res.json();
+    for(const item of (data.items||[])){
+      const img=item.volumeInfo?.imageLinks;
       if(img){
         const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
           .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
         if(url){S.addForm.cover=url;render();return;}
       }
-    }catch(e){}
-  }
-  // 2차: Google Books - 제목으로 검색
-  if(title){
-    try{
-      const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&maxResults=3`);
-      const data=await res.json();
-      for(const item of (data.items||[])){
-        const img=item.volumeInfo?.imageLinks;
-        if(img){
-          const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
-            .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
-          if(url){S.addForm.cover=url;render();return;}
-        }
-      }
-    }catch(e){}
-  }
-  // 3차: 알라딘 이미지를 프록시 통해서 base64로 변환
-  if(S.addForm.cover&&S.addForm.cover.includes('aladin')){
-    try{
-      const proxyUrl=`https://corsproxy.io/?${encodeURIComponent(S.addForm.cover)}`;
-      const res=await fetch(proxyUrl);
-      if(res.ok){
-        const blob=await res.blob();
-        const reader=new FileReader();
-        reader.onload=()=>{S.addForm.cover=reader.result;render();};
-        reader.readAsDataURL(blob);
-      }
-    }catch(e){}
-  }
+    }
+  }catch(e){}
 }
 
 async function fetchDesc(isbn){
