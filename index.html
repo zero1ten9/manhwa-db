@@ -391,16 +391,12 @@ function render(){
           
         </div>
         <div class="card-body">
-          <div class="card-title">${esc(m.title)}</div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin-bottom:2px"><div class="card-title" style="margin:0;flex:1">${esc(m.title)}</div>${m.score?`<span style="font-size:13px;font-weight:700;color:#f59e0b;white-space:nowrap;flex-shrink:0">★ ${m.score}</span>`:''}</div>
           <div class="card-author">${esc(m.author||'')}</div>
           <div class="card-footer">
             <span class="status-badge" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>${m.serial&&SERIAL[m.serial]?`<span class="status-badge" style="background:${SERIAL[m.serial].bg};color:${SERIAL[m.serial].color}">${SERIAL[m.serial].label}</span>`:''}
           </div>
           ${(m.tags||[]).length?`<div class="card-tags">${(m.tags||[]).slice(0,3).map(t=>`<span class="card-tag" style="${tagStyle(t)}">${esc(t)}</span>`).join('')}</div>`:''}
-        ${m.score?`<div style="display:flex;align-items:center;gap:1px;margin-top:5px">${Array.from({length:5},(_,i)=>{
-          const full=m.score>=i+1;const half=!full&&m.score>=i+0.5;
-          return full?'<span style="color:#fbbf24;font-size:13px">★</span>':half?'<span style="color:#fbbf24;font-size:13px;display:inline-block;width:.6em;overflow:hidden">★</span><span style="color:#e2e8f0;font-size:13px;margin-left:-.6em">★</span>':'<span style="color:#e2e8f0;font-size:13px">★</span>';
-        }).join('')}<span style="font-size:11px;color:#f59e0b;margin-left:4px;font-weight:600">${m.score}</span></div>`:''}
           
         </div>
       </div>`).join('')}</div>`
