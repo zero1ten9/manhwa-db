@@ -26,7 +26,7 @@
   async function loadFromFirestore() {
     try {
       const snap = await getDocs(collection(db, 'manga'));
-      const data = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      const data = snap.docs.map(d => ({...d.data(), _fsId: d.id, id: d.data().id || d.id}));
       if (data.length > 0) {
         window._firestoreData = data;
         if (window._appReady) {
