@@ -444,7 +444,7 @@ function render(){
     ${d.length===0
       ?`<div class="empty"><i class="ti ti-books"></i><div class="empty-title">만화가 없어요</div><div>왼쪽 사이드바에서 만화를 추가해보세요</div></div>`
       :`<div class="card-grid">${d.map(m=>`
-      <div class="manga-card" onclick="openDetail(${m.id})">
+      <div class="manga-card" onclick="openDetail('${m.id}')">
         <div class="card-cover">
           ${m.cover
             ?`<img src="${esc(m.cover)}" alt="${esc(m.title)}" onerror="this.parentElement.innerHTML='<div class=\\'card-cover-placeholder\\'><i class=\\'ti ti-book-2\\'></i></div>'">`
@@ -488,7 +488,7 @@ function renderSetup(){
 }
 
 function renderDetailModal(){
-  const m=S.data.find(x=>x.id===S.detailId);
+  const m=S.data.find(x=>String(x.id)===String(S.detailId));
   if(!m)return'';
   return`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="detail-modal">
@@ -512,8 +512,8 @@ function renderDetailModal(){
     ${m.note?`<div class="modal-section"><div class="modal-section-title">한줄평</div><div class="modal-comment">${esc(m.note)}</div></div>`:''}
     ${m.desc?`<div class="modal-section"><div class="modal-section-title">작품 소개</div><div class="modal-desc">${esc(m.desc)}</div></div>`:''}
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="deleteManga(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i> 삭제</button>
-      <button class="btn" onclick="startEdit(${m.id})"><i class="ti ti-edit" aria-hidden="true"></i> 수정</button>
+      <button class="btn btn-danger" onclick="deleteManga('${m.id}')"><i class="ti ti-trash" aria-hidden="true"></i> 삭제</button>
+      <button class="btn" onclick="startEdit('${m.id}')"><i class="ti ti-edit" aria-hidden="true"></i> 수정</button>
       <button class="btn btn-purple" onclick="closeModal()">닫기</button>
     </div>
   </div></div>`;
@@ -591,7 +591,7 @@ function openAdd(){S.addForm=emptyForm();S.editId=null;S.searchResults=[];S.moda
 function closeModal(){S.modal=null;S.detailId=null;S.editId=null;S.searchResults=[];render()}
 function openDetail(id){S.detailId=id;S.modal='detail';render()}
 function startEdit(id){
-  const m=S.data.find(x=>x.id===id);
+  const m=S.data.find(x=>String(x.id)===String(id));
   S.addForm={...m,tags:[...(m.tags||[])],serial:m.serial||'',_fsId:m._fsId||''};
   S.editId=id;S.modal='add';render();
 }
@@ -632,7 +632,7 @@ function deleteManga(id){
   if(!confirm('삭제할까요?'))return;
   const target=S.data.find(x=>x.id===id);
   if (target && window.deleteFromFirestore) deleteFromFirestore(target._fsId);
-  S.data=S.data.filter(x=>x.id!==id);
+  S.data=S.data.filter(x=>String(x.id)!==String(id));
   saveData();closeModal();
 }
 function saveManga(){
@@ -643,7 +643,7 @@ function saveManga(){
   const date=`${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
   const record={...f,tags,score:+f.score||0};
   if(S.editId){
-    const i=S.data.findIndex(x=>x.id===S.editId);
+    const i=S.data.findIndex(x=>String(x.id)===String(S.editId));
     if(i>=0)S.data[i]={...S.data[i],...record};
   }else{
     record.id=Date.now();record.date=date;
