@@ -520,7 +520,7 @@ async function doSearch(){
   }
   if(data&&data.item&&data.item.length){
     S.searchResults=data.item.map(i=>({
-      title:(i.title||'').replace(/\s*\d+권\s*$/,'').replace(/\s*\(\d+\)\s*$/,'').trim(),
+      title:(i.title||'').replace(/\s*\d+\s*$/, '').replace(/\s*\d+권.*$/, '').replace(/\s*[:\-]\s*\d+$/, '').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
       cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig').replace('http://','https://'),
       isbn:i.isbn13||i.isbn||'',
@@ -542,6 +542,23 @@ function pickResult(i){
   if(r.isbn&&S.aladinKey){
     fetchDesc(r.isbn);
   }
+  if(r.isbn){
+    fetchCover(r.isbn, r.title);
+  }
+}
+
+async function fetchCover(isbn, title){
+  try{
+    const q=isbn?`isbn:${isbn}`:encodeURIComponent(title);
+    const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1`);
+    const data=await res.json();
+    const img=data.items?.[0]?.volumeInfo?.imageLinks;
+    if(img){
+      const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
+        .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
+      if(url){S.addForm.cover=url;render();}
+    }
+  }catch(e){}
 }
 
 async function fetchDesc(isbn){
