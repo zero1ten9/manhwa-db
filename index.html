@@ -520,7 +520,7 @@ async function doSearch(){
   }
   if(data&&data.item&&data.item.length){
     S.searchResults=data.item.map(i=>({
-      title:(i.title||'').replace(/\s*\d+\s*$/, '').replace(/\s*\d+권.*$/, '').replace(/\s*[:\-]\s*\d+$/, '').trim(),
+      title:(i.title||'').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
       cover:(i.cover||'').replace('http://','https://').replace('coversum','cover200'),
       isbn:i.isbn13||i.isbn||'',
@@ -532,9 +532,22 @@ async function doSearch(){
   S.searchLoading=false;render();
 }
 
+function cleanTitle(t){
+  // "제목 32", "제목 32권", "제목 - 32", "제목 : 32권" 등 제거
+  // 단, "진격의 거인", "Re:제로" 같은 제목은 건드리지 않음
+  return (t||'')
+    .replace(/\s+\d+권\s*[-:]?.*$/, '')   // "32권" 이후 전부
+    .replace(/\s+\d+\s*[-:]\s*.{0,10}$/, m => {
+      // "32 - 부제목" 형식 — 숫자 뒤 텍스트가 짧으면 부제목으로 판단해 제거
+      return '';
+    })
+    .replace(/\s+\d+$/, '')               // 끝에 숫자만 있는 경우
+    .trim();
+}
+
 function pickResult(i){
   const r=S.searchResults[i];
-  S.addForm.title=r.title;
+  S.addForm.title=cleanTitle(r.title);
   S.addForm.author=r.author;
   S.addForm.cover=r.cover;
   S.addForm.desc=r.desc||'';
