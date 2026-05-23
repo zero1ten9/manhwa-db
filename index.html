@@ -243,8 +243,8 @@ let S={
   filterStatus:'all',
   filterSerial:'all',
   filterScore:'all',
-  filterTag:'all',
-  ddOpen:null,
+  filterTags:[],
+
   searchQ:'',
   sortBy:'score',
   modal:null,
@@ -273,7 +273,7 @@ function filtered(){
     else if(S.filterScore==='2')d=d.filter(m=>m.score<2.5&&m.score>0);
   }
   if(S.filterSerial!=='all')d=d.filter(m=>m.serial===S.filterSerial);
-  if(S.filterTag!=='all')d=d.filter(m=>(m.tags||[]).includes(S.filterTag));
+  if(S.filterTags&&S.filterTags.length)d=d.filter(m=>S.filterTags.every(t=>(m.tags||[]).includes(t)));
   if(S.searchQ){const q=S.searchQ.toLowerCase();d=d.filter(m=>m.title.toLowerCase().includes(q)||(m.author||'').toLowerCase().includes(q))}
   if(S.sortBy==='score')d.sort((a,b)=>b.score-a.score);
   else if(S.sortBy==='title')d.sort((a,b)=>a.title.localeCompare(b.title,'ko'));
@@ -286,7 +286,7 @@ function render(){
   if(S.filterStatus!=='all')activeFilters.push({label:STATUS[S.filterStatus]?.label,clear:"S.filterStatus='all'"});
   if(S.filterSerial!=='all')activeFilters.push({label:SERIAL[S.filterSerial]?.label,clear:"S.filterSerial='all'"});
   if(S.filterScore!=='all')activeFilters.push({label:'★ '+S.filterScore+' 이상',clear:"S.filterScore='all'"});
-  if(S.filterTag!=='all')activeFilters.push({label:S.filterTag,clear:"S.filterTag='all'"});
+  S.filterTags.forEach(t=>activeFilters.push({label:t,clear:`S.filterTags=S.filterTags.filter(x=>x!=='${t}');render()`}));
 
   document.getElementById('app').innerHTML=`
 <div class="sidebar" id="sidebar">
@@ -300,65 +300,50 @@ function render(){
     <input type="text" placeholder="검색..." value="${esc(S.searchQ)}" oninput="S.searchQ=this.value;render()">
   </div>
 
-  <div style="padding:0 12px 8px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">상태</div>
-    <div class="sb-dropdown">
-      <div class="sb-dropdown-btn ${S.filterStatus!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='status'?null:'status';render()">
-        <span style="display:flex;align-items:center;gap:6px">
-          ${S.filterStatus!=='all'?`<span style="width:7px;height:7px;border-radius:50%;background:${STATUS[S.filterStatus]?.color};display:inline-block"></span>`:''}
-          ${S.filterStatus==='all'?'전체 ('+S.data.length+')':STATUS[S.filterStatus]?.label+' ('+statusCount(S.filterStatus)+')'}
-        </span>
-        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='status'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
-      </div>
-      ${S.ddOpen==='status'?`<div class="sb-dropdown-menu">
-        <div class="sb-dropdown-item ${S.filterStatus==='all'?'active':''}" onclick="S.filterStatus='all';S.ddOpen=null;render();closeSidebar()">전체<span class="sb-count">${S.data.length}</span></div>
-        ${Object.entries(STATUS).map(([k,v])=>`
-        <div class="sb-dropdown-item ${S.filterStatus===k?'active':''}" onclick="S.filterStatus='${k}';S.ddOpen=null;render();closeSidebar()">
-          <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>
-          <span class="sb-count">${statusCount(k)}</span>
-        </div>`).join('')}
-      </div>`:''}
+  <div class="sidebar-section">
+    <div class="sidebar-item ${S.filterStatus==='all'?'active':''}" onclick="S.filterStatus='all';render();closeSidebar()">
+      전체 <span class="sidebar-count">${filtered().length}</span>
     </div>
   </div>
-
-  <div style="padding:0 12px 8px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">연재현황</div>
-    <div class="sb-dropdown">
-      <div class="sb-dropdown-btn ${S.filterSerial!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='serial'?null:'serial';render()">
-        <span>${S.filterSerial==='all'?'전체':SERIAL[S.filterSerial]?.label}</span>
-        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='serial'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
-      </div>
-      ${S.ddOpen==='serial'?`<div class="sb-dropdown-menu">
-        <div class="sb-dropdown-item ${S.filterSerial==='all'?'active':''}" onclick="S.filterSerial='all';S.ddOpen=null;render();closeSidebar()">전체</div>
-        ${Object.entries(SERIAL).map(([k,v])=>`
-        <div class="sb-dropdown-item ${S.filterSerial===k?'active':''}" onclick="S.filterSerial='${k}';S.ddOpen=null;render();closeSidebar()">
-          <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>
-        </div>`).join('')}
-      </div>`:''}
-    </div>
+  <div class="sidebar-section" style="margin-top:6px">
+    <div class="sidebar-section-title">상태</div>
+    ${Object.entries(STATUS).map(([k,v])=>`
+    <div class="sidebar-item ${S.filterStatus===k?'active':''}" onclick="S.filterStatus='${k}';render();closeSidebar()">
+      <span style="display:flex;align-items:center;gap:7px"><span class="sidebar-status-dot" style="background:${v.color}"></span>${v.label}</span>
+      <span class="sidebar-count">${filtered().filter(m=>m.status===k).length}</span>
+    </div>`).join('')}
   </div>
-
-  <div style="padding:0 12px 8px">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">별점</div>
-    <div class="sb-dropdown">
-      <div class="sb-dropdown-btn ${S.filterScore!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='score'?null:'score';render()">
-        <span>${S.filterScore==='all'?'전체':S.filterScore==='4.5'?'★ 4.5 이상':S.filterScore==='3.5'?'★ 3.5-4':S.filterScore==='2.5'?'★ 2.5-3':'★ 2 이하'}</span>
-        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='score'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
-      </div>
-      ${S.ddOpen==='score'?`<div class="sb-dropdown-menu">
-        <div class="sb-dropdown-item ${S.filterScore==='all'?'active':''}" onclick="S.filterScore='all';S.ddOpen=null;render();closeSidebar()">전체</div>
-        ${[['4.5','★ 4.5 이상'],['3.5','★ 3.5 - 4'],['2.5','★ 2.5 - 3'],['2','★ 2 이하']].map(([v,l])=>`
-        <div class="sb-dropdown-item ${S.filterScore===v?'active':''}" onclick="S.filterScore='${v}';S.ddOpen=null;render();closeSidebar()">${l}</div>`).join('')}
-      </div>`:''}
-    </div>
-  </div>
-
   <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title" style="margin-bottom:5px">연재현황</div>
+    <div style="display:flex;flex-wrap:wrap;gap:3px;padding:0 2px">
+      ${Object.entries(SERIAL).map(([k,v])=>`
+      <span onclick="S.filterSerial=S.filterSerial==='${k}'?'all':'${k}';render();closeSidebar()"
+        style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:20px;cursor:pointer;user-select:none;transition:all .15s;
+        ${S.filterSerial===k?`background:${v.bg};color:${v.color};font-weight:600;outline:1.5px solid ${v.color}`:'background:var(--bg);color:var(--muted)'}">
+        <span style="width:6px;height:6px;border-radius:50%;background:${v.color};flex-shrink:0"></span>${v.label}
+      </span>`).join('')}
+    </div>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <div class="sidebar-section-title" style="margin-bottom:5px">별점</div>
+    <div style="display:flex;flex-wrap:wrap;gap:3px;padding:0 2px">
+      ${[['4.5','★ 4.5+'],['3.5','★ 3.5-4'],['2.5','★ 2.5-3'],['2','★ 2↓']].map(([v,l])=>`
+      <span onclick="S.filterScore=S.filterScore==='${v}'?'all':'${v}';render();closeSidebar()"
+        style="font-size:11px;padding:3px 8px;border-radius:20px;cursor:pointer;user-select:none;transition:all .15s;
+        ${S.filterScore===v?'background:var(--purple-bg);color:var(--purple);font-weight:600;outline:1.5px solid var(--purple)':'background:var(--bg);color:var(--muted)'}">
+        ${l}
+      </span>`).join('')}
+    </div>
+  </div>
+  <hr class="sidebar-divider">
+    <hr class="sidebar-divider">
 
   <div class="sidebar-section">
     <div class="sidebar-section-title" style="margin-bottom:5px">태그</div>
     <div class="tags-wrap">
-      ${allTags().map(t=>`<span class="sidebar-label ${S.filterTag===t?'active':''}" style="${S.filterTag===t?'':''}" onclick="S.filterTag=S.filterTag==='${t}'?'all':'${t}';render();closeSidebar()">${esc(t)}</span>`).join('')}
+      ${allTags().map(t=>`<span class="sidebar-label ${(S.filterTags||[]).includes(t)?'active':''}" onclick="toggleFilterTag('${t}');render();closeSidebar()">${esc(t)}</span>`).join('')}
     </div>
   </div>
 
@@ -377,7 +362,7 @@ function render(){
     <div class="topbar-left">
       <div class="filter-chips">
         ${activeFilters.map(f=>`<span class="chip active">${esc(f.label)} <span style="opacity:.6;cursor:pointer" onclick="${f.clear};render()">✕</span></span>`).join('')}
-        ${activeFilters.length>1?`<span style="font-size:12px;color:var(--purple);cursor:pointer" onclick="S.filterStatus='all';S.filterScore='all';S.filterTag='all';render()">모두 지우기</span>`:''}
+        ${activeFilters.length>1?`<span style="font-size:12px;color:var(--purple);cursor:pointer" onclick="S.filterStatus='all';S.filterSerial='all';S.filterScore='all';S.filterTags=[];render()">모두 지우기</span>`:''}
       </div>
     </div>
     <select class="sort-select" onchange="S.sortBy=this.value;render()">
@@ -543,6 +528,12 @@ function startEdit(id){
   S.editId=id;S.modal='add';render();
 }
 function setScore(n){S.addForm.score=n;render()}
+function toggleFilterTag(t){
+  if(!S.filterTags)S.filterTags=[];
+  const idx=S.filterTags.indexOf(t);
+  if(idx>=0)S.filterTags.splice(idx,1);
+  else S.filterTags.push(t);
+}
 function toggleTag(t){
   let tags=Array.isArray(S.addForm.tags)?[...S.addForm.tags]:(S.addForm.tags||'').split(',').map(x=>x.trim()).filter(Boolean);
   const idx=tags.indexOf(t);
