@@ -548,17 +548,47 @@ function pickResult(i){
 }
 
 async function fetchCover(isbn, title){
-  try{
-    const q=isbn?`isbn:${isbn}`:encodeURIComponent(title);
-    const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1`);
-    const data=await res.json();
-    const img=data.items?.[0]?.volumeInfo?.imageLinks;
-    if(img){
-      const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
-        .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
-      if(url){S.addForm.cover=url;render();}
-    }
-  }catch(e){}
+  // 1차: Google Books - ISBN으로 검색
+  if(isbn){
+    try{
+      const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&maxResults=1`);
+      const data=await res.json();
+      const img=data.items?.[0]?.volumeInfo?.imageLinks;
+      if(img){
+        const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
+          .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
+        if(url){S.addForm.cover=url;render();return;}
+      }
+    }catch(e){}
+  }
+  // 2차: Google Books - 제목으로 검색
+  if(title){
+    try{
+      const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&maxResults=3`);
+      const data=await res.json();
+      for(const item of (data.items||[])){
+        const img=item.volumeInfo?.imageLinks;
+        if(img){
+          const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
+            .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
+          if(url){S.addForm.cover=url;render();return;}
+        }
+      }
+    }catch(e){}
+  }
+  // 3차: 알라딘 이미지를 프록시 통해서 base64로 변환
+  if(S.addForm.cover&&S.addForm.cover.includes('aladin')){
+    try{
+      const proxyUrl=`https://corsproxy.io/?${encodeURIComponent(S.addForm.cover)}`;
+      const res=await fetch(proxyUrl);
+      if(res.ok){
+        const blob=await res.blob();
+        const reader=new FileReader();
+        reader.onload=()=>{S.addForm.cover=reader.result;render();};
+        reader.readAsDataURL(blob);
+      }
+    }catch(e){}
+  }
 }
 
 async function fetchDesc(isbn){
