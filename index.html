@@ -41,6 +41,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-label:hover{background:var(--purple-bg);color:var(--purple)}
 .sidebar-label.active{background:var(--purple-bg);color:var(--purple);font-weight:600}
 .tags-wrap{display:flex;flex-wrap:wrap;gap:2px;padding:0 6px}
+.tag-pick-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.tag-pick{font-size:12px;padding:3px 10px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;font-weight:500;transition:all .15s;user-select:none;opacity:.5}
+.tag-pick:hover{opacity:.85}
+.tag-pick.selected{opacity:1;border-color:rgba(0,0,0,.15)}
+.serial-wrap{display:flex;gap:6px;margin-top:4px}
+.serial-btn{font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-weight:500;transition:all .15s;user-select:none}
+.serial-btn:hover{border-color:var(--purple);color:var(--purple)}
+.serial-btn.selected{background:#e8f5e9;border-color:#43a047;color:#2e7d32}
 
 /* main */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
@@ -166,6 +174,30 @@ const STATUS={
   plan:{label:'예정',color:'#94a3b8',bg:'#f1f5f9'},
   dropped:{label:'중단',color:'#ef4444',bg:'#fef2f2'}
 };
+const SERIAL={
+  ongoing:{label:'연재 중',color:'#1976d2',bg:'#e3f2fd'},
+  finished:{label:'완결',color:'#388e3c',bg:'#e8f5e9'},
+  hiatus:{label:'연재중단',color:'#e64a19',bg:'#fbe9e7'},
+};
+const TAG_COLORS={
+  '액션':  {bg:'#fdecea',color:'#c62828'},
+  '판타지':{bg:'#ede7f6',color:'#4527a0'},
+  '배틀':  {bg:'#fff3e0',color:'#e65100'},
+  '일상':  {bg:'#e8f5e9',color:'#2e7d32'},
+  '코미디':{bg:'#fffde7',color:'#f57f17'},
+  '힐링':  {bg:'#e0f7fa',color:'#00695c'},
+  '다크':  {bg:'#263238',color:'#cfd8dc'},
+  '요리':  {bg:'#fce4ec',color:'#880e4f'},
+  '학교':  {bg:'#e8eaf6',color:'#283593'},
+  '미스터리':{bg:'#f3e5f5',color:'#6a1b9a'},
+  '로맨스':{bg:'#fce4ec',color:'#c2185b'},
+  'SF':    {bg:'#e1f5fe',color:'#01579b'},
+  '스포츠':{bg:'#e8f5e9',color:'#1b5e20'},
+  '소년':  {bg:'#fff8e1',color:'#ff8f00'},
+  '성인':  {bg:'#efebe9',color:'#4e342e'},
+};
+const PRESET_TAGS=['액션','판타지','배틀','일상','코미디','힐링','다크','요리','학교','미스터리','로맨스','SF','스포츠','소년'];
+function tagStyle(t){const c=TAG_COLORS[t];return c?`background:${c.bg};color:${c.color}`:`background:var(--purple-bg);color:var(--purple)`;}
 
 // 로컬스토리지에서 데이터 불러오기
 function loadData(){
@@ -214,7 +246,7 @@ let S={
   sheetsKey:settings.sheetsKey,
 };
 
-function emptyForm(){return{title:'',author:'',cover:'',isbn:'',status:'reading',score:0,note:'',tags:'',desc:''}}
+function emptyForm(){return{title:'',author:'',cover:'',isbn:'',status:'reading',serial:'',score:0,note:'',tags:[],desc:''}}
 function allTags(){const s=new Set();S.data.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));return[...s]}
 function statusCount(k){return S.data.filter(m=>m.status===k).length}
 
@@ -285,7 +317,7 @@ function render(){
   <div class="sidebar-section">
     <div class="sidebar-section-title" style="margin-bottom:5px">태그</div>
     <div class="tags-wrap">
-      ${allTags().map(t=>`<span class="sidebar-label ${S.filterTag===t?'active':''}" onclick="S.filterTag=S.filterTag==='${t}'?'all':'${t}';render();closeSidebar()">${esc(t)}</span>`).join('')}
+      ${allTags().map(t=>`<span class="sidebar-label ${S.filterTag===t?'active':''}" style="${S.filterTag===t?'':''}" onclick="S.filterTag=S.filterTag==='${t}'?'all':'${t}';render();closeSidebar()">${esc(t)}</span>`).join('')}
     </div>
   </div>
 
@@ -329,9 +361,9 @@ function render(){
           <div class="card-title">${esc(m.title)}</div>
           <div class="card-author">${esc(m.author||'')}</div>
           <div class="card-footer">
-            <span class="status-badge" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>
+            <span class="status-badge" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>${m.serial&&SERIAL[m.serial]?`<span class="status-badge" style="background:${SERIAL[m.serial].bg};color:${SERIAL[m.serial].color}">${SERIAL[m.serial].label}</span>`:''}
           </div>
-          ${(m.tags||[]).length?`<div class="card-tags">${(m.tags||[]).slice(0,3).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('')}</div>`:''}
+          ${(m.tags||[]).length?`<div class="card-tags">${(m.tags||[]).slice(0,3).map(t=>`<span class="card-tag" style="${tagStyle(t)}">${esc(t)}</span>`).join('')}</div>`:''}
           ${m.date?`<div class="card-date">${esc(m.date)}</div>`:''}
         </div>
       </div>`).join('')}</div>`
@@ -377,11 +409,12 @@ function renderDetailModal(){
         <div class="modal-badges">
           ${m.score?`<span class="modal-score"><i class="ti ti-star-filled" style="font-size:13px" aria-hidden="true"></i>${m.score}</span>`:''}
           <span class="modal-status" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>
+          ${m.serial&&SERIAL[m.serial]?`<span class="modal-status" style="background:${SERIAL[m.serial].bg};color:${SERIAL[m.serial].color}">${SERIAL[m.serial].label}</span>`:''}
         </div>
         ${m.date?`<div class="modal-date">${esc(m.date)}</div>`:''}
       </div>
     </div>
-    ${(m.tags||[]).length?`<div class="modal-section"><div class="modal-section-title">태그</div><div class="modal-tags">${m.tags.map(t=>`<span class="modal-tag">${esc(t)}</span>`).join('')}</div></div>`:''}
+    ${(m.tags||[]).length?`<div class="modal-section"><div class="modal-section-title">태그</div><div class="modal-tags">${m.tags.map(t=>`<span class="modal-tag" style="${tagStyle(t)}">${esc(t)}</span>`).join('')}</div></div>`:''}
     ${m.note?`<div class="modal-section"><div class="modal-section-title">한줄평</div><div class="modal-comment">${esc(m.note)}</div></div>`:''}
     ${m.desc?`<div class="modal-section"><div class="modal-section-title">작품 소개</div><div class="modal-desc">${esc(m.desc)}</div></div>`:''}
     <div class="modal-actions">
@@ -428,7 +461,22 @@ function renderAddModal(){
           return`<span onmousemove="hoverStar(event,${i})" onmouseleave="unhoverStar()" onclick="clickStar(event,${i})" style="cursor:pointer;font-size:26px;padding:0 1px;position:relative;display:inline-block;width:28px;height:28px;line-height:28px"><span style="color:var(--hint);position:absolute;left:0">★</span><span style="color:#fbbf24;position:absolute;left:0;overflow:hidden;width:${full?'100%':half?'50%':'0%'}">★</span></span>`;
         }).join('')}</div>
       </div>
-      <div class="form-group"><label>태그 (쉼표 구분)</label><input type="text" value="${Array.isArray(f.tags)?f.tags.join(', '):esc(f.tags)}" oninput="S.addForm.tags=this.value" placeholder="액션, 판타지, 일상..."></div>
+      <div class="form-group">
+        <label>연재 상태</label>
+        <div class="serial-wrap">${Object.entries(SERIAL).map(([k,v])=>`
+          <button class="serial-btn ${f.serial===k?'selected':''}" onclick="S.addForm.serial=S.addForm.serial==='${k}'?'':('${k}');render()" style="${f.serial===k?'background:'+v.bg+';border-color:'+v.color+';color:'+v.color:''}">${v.label}</button>`).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label>태그</label>
+        <div class="tag-pick-wrap">${PRESET_TAGS.map(t=>{
+          const tags=Array.isArray(f.tags)?f.tags:(f.tags||'').split(',').map(x=>x.trim()).filter(Boolean);
+          const on=tags.includes(t);
+          const c=TAG_COLORS[t]||{bg:'#f3effe',color:'#7c5cbf'};
+          return`<span class="tag-pick ${on?'selected':''}" style="background:${c.bg};color:${c.color};${on?'border-color:'+c.color:''}" onclick="toggleTag('${t}')">${t}</span>`;
+        }).join('')}</div>
+        <input type="text" placeholder="직접 입력 후 Enter..." style="margin-top:8px;font-size:12px" onkeydown="if(event.key==='Enter'&&this.value.trim()){toggleTag(this.value.trim());this.value='';event.preventDefault()}">
+      </div>
       <div class="form-group"><label>한줄평</label><textarea oninput="S.addForm.note=this.value" placeholder="한 줄 감상...">${esc(f.note)}</textarea></div>
       <div class="form-group"><label>작품 소개</label><textarea oninput="S.addForm.desc=this.value" placeholder="줄거리나 소개..." style="min-height:90px">${esc(f.desc)}</textarea></div>
       ${f.cover?`<div style="margin-bottom:4px"><img src="${esc(f.cover)}" style="height:90px;border-radius:6px;border:1px solid var(--border)" alt="표지 미리보기"></div>`:''}
@@ -450,10 +498,18 @@ function closeModal(){S.modal=null;S.detailId=null;S.editId=null;S.searchResults
 function openDetail(id){S.detailId=id;S.modal='detail';render()}
 function startEdit(id){
   const m=S.data.find(x=>x.id===id);
-  S.addForm={...m,tags:(m.tags||[]).join(', ')};
+  S.addForm={...m,tags:[...(m.tags||[])],serial:m.serial||''};
   S.editId=id;S.modal='add';render();
 }
 function setScore(n){S.addForm.score=n;render()}
+function toggleTag(t){
+  let tags=Array.isArray(S.addForm.tags)?[...S.addForm.tags]:(S.addForm.tags||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const idx=tags.indexOf(t);
+  if(idx>=0)tags.splice(idx,1);
+  else tags.push(t);
+  S.addForm.tags=tags;
+  render();
+}
 function clickStar(e,i){
   const rect=e.currentTarget.getBoundingClientRect();
   const half=e.clientX-rect.left < rect.width/2;
@@ -480,7 +536,7 @@ function deleteManga(id){
 function saveManga(){
   const f=S.addForm;
   if(!f.title.trim()){alert('제목을 입력해주세요');return}
-  const tags=typeof f.tags==='string'?f.tags.split(',').map(t=>t.trim()).filter(Boolean):(f.tags||[]);
+  const tags=Array.isArray(f.tags)?f.tags:(typeof f.tags==='string'?f.tags.split(',').map(t=>t.trim()).filter(Boolean):[]);
   const today=new Date();
   const date=`${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
   const record={...f,tags,score:+f.score||0};
@@ -547,7 +603,7 @@ function cleanTitle(t){
 
 function pickResult(i){
   const r=S.searchResults[i];
-  S.addForm.title=cleanTitle(r.title);
+  S.addForm.title=document.getElementById('aladin-q')?.value?.trim()||r.title;
   S.addForm.author=r.author;
   S.addForm.cover=r.cover;
   S.addForm.desc=r.desc||'';
