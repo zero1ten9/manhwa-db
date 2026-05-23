@@ -592,7 +592,7 @@ function closeModal(){S.modal=null;S.detailId=null;S.editId=null;S.searchResults
 function openDetail(id){S.detailId=id;S.modal='detail';render()}
 function startEdit(id){
   const m=S.data.find(x=>x.id===id);
-  S.addForm={...m,tags:[...(m.tags||[])],serial:m.serial||''};
+  S.addForm={...m,tags:[...(m.tags||[])],serial:m.serial||'',_fsId:m._fsId||''};
   S.editId=id;S.modal='add';render();
 }
 function setScore(n){S.addForm.score=n;render()}
