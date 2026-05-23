@@ -421,8 +421,12 @@ function renderAddModal(){
         <div class="form-group"><label>상태</label><select onchange="S.addForm.status=this.value">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${f.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
       </div>
       <div class="form-group">
-        <label>별점 (${f.score}/5)</label>
-        <div class="star-row">${Array.from({length:5},(_,i)=>`<button class="star-btn ${i<f.score?'on':''}" onclick="setScore(${i+1})" aria-label="${i+1}점">★</button>`).join('')}</div>
+        <label>별점 (${f.score>0?f.score+'점':'미평가'})</label>
+        <div class="star-row" id="star-row">${Array.from({length:5},(_,i)=>{
+          const full=f.score>=i+1;
+          const half=!full&&f.score>=i+0.5;
+          return`<span onmousemove="hoverStar(event,${i})" onmouseleave="unhoverStar()" onclick="clickStar(event,${i})" style="cursor:pointer;font-size:26px;padding:0 1px;position:relative;display:inline-block;width:28px;height:28px;line-height:28px"><span style="color:var(--hint);position:absolute;left:0">★</span><span style="color:#fbbf24;position:absolute;left:0;overflow:hidden;width:${full?'100%':half?'50%':'0%'}">★</span></span>`;
+        }).join('')}</div>
       </div>
       <div class="form-group"><label>태그 (쉼표 구분)</label><input type="text" value="${Array.isArray(f.tags)?f.tags.join(', '):esc(f.tags)}" oninput="S.addForm.tags=this.value" placeholder="액션, 판타지, 일상..."></div>
       <div class="form-group"><label>한줄평</label><textarea oninput="S.addForm.note=this.value" placeholder="한 줄 감상...">${esc(f.note)}</textarea></div>
@@ -450,6 +454,24 @@ function startEdit(id){
   S.editId=id;S.modal='add';render();
 }
 function setScore(n){S.addForm.score=n;render()}
+function clickStar(e,i){
+  const rect=e.currentTarget.getBoundingClientRect();
+  const half=e.clientX-rect.left < rect.width/2;
+  S.addForm.score=half?i+0.5:i+1;
+  render();
+}
+function hoverStar(e,i){
+  const rect=e.currentTarget.getBoundingClientRect();
+  const half=e.clientX-rect.left < rect.width/2;
+  const score=half?i+0.5:i+1;
+  document.querySelectorAll('#star-row span[onmousemove]').forEach((el,idx)=>{
+    const full=score>=idx+1;
+    const h=!full&&score>=idx+0.5;
+    const fill=el.querySelector('span:last-child');
+    if(fill)fill.style.width=full?'100%':h?'50%':'0%';
+  });
+}
+function unhoverStar(){render();}
 function deleteManga(id){
   if(!confirm('삭제할까요?'))return;
   S.data=S.data.filter(x=>x.id!==id);
@@ -488,9 +510,9 @@ function doSearch(){
   window[cbName]=function(data){
     delete window[cbName];
     S.searchResults=(data.item||[]).map(i=>({
-      title:i.title,
+      title:(i.title||'').replace(/\s*\d+권\s*$/, '').replace(/\s*\(\d+\)\s*$/, '').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
-      cover:(i.cover||'').replace('coversum','cover200'),
+      cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig'),
       isbn:i.isbn13||'',
       desc:i.description||''
     }));
@@ -514,6 +536,27 @@ function pickResult(i){
   S.addForm.cover=r.cover;
   S.addForm.desc=r.desc||'';
   S.searchResults=[];render();
+  if(r.isbn&&S.aladinKey){
+    fetchDesc(r.isbn);
+  }
+}
+
+function fetchDesc(isbn){
+  const cbName='aladinDescCb_'+Date.now();
+  const old=document.getElementById('aladin-desc-script');
+  if(old)old.remove();
+  window[cbName]=function(data){
+    delete window[cbName];
+    const item=(data.item||[])[0];
+    if(item&&item.description&&item.description.length>10){
+      S.addForm.desc=item.description;
+      render();
+    }
+  };
+  const script=document.createElement('script');
+  script.id='aladin-desc-script';
+  script.src=`https://www.aladin.co.kr/ttb/api/ItemLookUp.aspx?ttbkey=${S.aladinKey}&itemIdType=ISBN13&ItemId=${isbn}&output=js&Version=20131101&OptResult=description&callback=${cbName}`;
+  document.head.appendChild(script);
 }
 
 async function syncToSheets(record){
