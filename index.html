@@ -542,39 +542,9 @@ function pickResult(i){
   if(r.isbn&&S.aladinKey){
     fetchDesc(r.isbn);
   }
-  if(r.isbn){
-    fetchCover(r.isbn, r.title);
-  }
 }
 
-async function fetchCover(isbn, title){
-  // 알라딘 이미지를 corsproxy로 base64 변환
-  const aladinUrl=S.addForm.cover;
-  if(!aladinUrl||!aladinUrl.includes('aladin'))return;
-  try{
-    const res=await fetch(`https://corsproxy.io/?${encodeURIComponent(aladinUrl)}`);
-    if(res.ok){
-      const blob=await res.blob();
-      const reader=new FileReader();
-      reader.onload=()=>{S.addForm.cover=reader.result;render();};
-      reader.readAsDataURL(blob);
-      return;
-    }
-  }catch(e){}
-  // fallback: Google Books 제목 검색
-  try{
-    const res=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&maxResults=3`);
-    const data=await res.json();
-    for(const item of (data.items||[])){
-      const img=item.volumeInfo?.imageLinks;
-      if(img){
-        const url=(img.extraLarge||img.large||img.medium||img.thumbnail||'')
-          .replace('http://','https://').replace('&edge=curl','').replace('zoom=1','zoom=3');
-        if(url){S.addForm.cover=url;render();return;}
-      }
-    }
-  }catch(e){}
-}
+
 
 async function fetchDesc(isbn){
   if(!isbn||!S.aladinKey)return;
