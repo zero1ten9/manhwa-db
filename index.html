@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#7c5cbf">
+<title>만화 데이터베이스</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --purple:#7c5cbf;--purple-light:#9b7fd4;--purple-bg:#f3effe;--purple-dark:#5a3fa0;
+  --bg:#f7f7f7;--surface:#fff;--border:#e8e8e8;--text:#1a1a1a;--muted:#888;--hint:#bbb;
+  --r:10px;--r-sm:6px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+
+.layout{display:flex;height:100dvh;overflow:hidden}
+
+/* sidebar */
+.sidebar{width:180px;min-width:180px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:14px 0;transition:transform .25s}
+.sidebar-logo{display:flex;align-items:center;gap:7px;padding:0 14px 14px;font-size:13px;font-weight:700;border-bottom:1px solid var(--border);margin-bottom:10px}
+.sidebar-logo-icon{width:28px;height:28px;background:var(--purple);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;flex-shrink:0}
+.add-btn{margin:0 12px 12px;background:var(--purple);color:#fff;border:none;border-radius:var(--r-sm);padding:8px 0;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:background .15s}
+.add-btn:hover{background:var(--purple-dark)}
+.search-wrap{margin:0 12px 12px;position:relative}
+.search-wrap input{width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:7px 8px 7px 28px;font-size:12px;outline:none;background:var(--bg);color:var(--text)}
+.search-wrap input:focus{border-color:var(--purple)}
+.search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--hint);font-size:14px}
+.sidebar-section{padding:0 14px;margin-bottom:2px}
+.sidebar-section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.sidebar-item{display:flex;align-items:center;justify-content:space-between;padding:6px 7px;border-radius:var(--r-sm);cursor:pointer;font-size:12px;color:var(--text);transition:background .1s;margin-bottom:2px;user-select:none}
+.sidebar-item:hover{background:var(--purple-bg)}
+.sidebar-item.active{background:var(--purple-bg);color:var(--purple);font-weight:600}
+.sidebar-count{font-size:11px;background:var(--purple-bg);color:var(--purple);border-radius:10px;padding:1px 7px;font-weight:600}
+.sidebar-item.active .sidebar-count{background:var(--purple);color:#fff}
+.sidebar-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sidebar-divider{border:none;border-top:1px solid var(--border);margin:10px 12px}
+.sidebar-label{font-size:11px;padding:4px 7px;cursor:pointer;border-radius:var(--r-sm);transition:background .1s;display:inline-flex;align-items:center;gap:3px;color:var(--muted);margin-bottom:2px;user-select:none}
+.sidebar-label:hover{background:var(--purple-bg);color:var(--purple)}
+.sidebar-label.active{background:var(--purple-bg);color:var(--purple);font-weight:600}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:2px;padding:0 6px}
+
+/* main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.topbar-left{display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:inline-flex;align-items:center;gap:4px;color:var(--muted);transition:all .15s}
+.chip.active{background:var(--purple-bg);border-color:var(--purple);color:var(--purple);font-weight:500}
+.sort-select{font-size:12px;border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 8px;background:var(--surface);color:var(--text);outline:none;cursor:pointer}
+.content-area{flex:1;overflow-y:auto;padding:18px}
+
+/* cards */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:14px}
+.manga-card{background:var(--surface);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.manga-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.card-cover{width:100%;aspect-ratio:2/3;background:#eee;position:relative;overflow:hidden}
+.card-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.card-cover-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8e0f5,#d4c8ef);color:var(--purple);font-size:32px}
+.card-score{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fbbf24;font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;display:flex;align-items:center;gap:2px}
+.card-body{padding:9px 10px}
+.card-title{font-size:12px;font-weight:600;line-height:1.4;margin-bottom:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.card-author{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+.card-footer{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.status-badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;white-space:nowrap}
+.card-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+.card-tag{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--purple-bg);color:var(--purple)}
+.card-date{font-size:10px;color:var(--hint);margin-top:4px}
+
+/* modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px;backdrop-filter:blur(4px)}
+
+/* detail modal */
+.detail-modal{background:var(--surface);border-radius:14px;width:100%;max-width:560px;max-height:90dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);position:relative}
+.modal-top{padding:22px 22px 0;display:flex;gap:18px;align-items:flex-start}
+.modal-cover{width:100px;height:150px;border-radius:8px;object-fit:cover;background:linear-gradient(135deg,#e8e0f5,#d4c8ef);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--purple);font-size:36px}
+.modal-cover img{width:100%;height:100%;object-fit:cover}
+.modal-info{flex:1;min-width:0}
+.modal-title{font-size:20px;font-weight:700;margin-bottom:3px;line-height:1.3}
+.modal-author{font-size:13px;color:var(--muted);margin-bottom:12px}
+.modal-badges{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.modal-score{display:inline-flex;align-items:center;gap:4px;background:var(--purple-bg);color:var(--purple);font-size:14px;font-weight:700;padding:5px 12px;border-radius:7px}
+.modal-status{font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px}
+.modal-date{font-size:12px;color:var(--muted)}
+.modal-section{padding:14px 22px;border-top:1px solid var(--border)}
+.modal-section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.modal-tags{display:flex;gap:6px;flex-wrap:wrap}
+.modal-tag{font-size:12px;padding:4px 12px;border-radius:5px;background:var(--purple-bg);color:var(--purple);font-weight:600}
+.modal-desc{font-size:13px;line-height:1.9;color:var(--text)}
+.modal-comment{font-size:13px;line-height:1.8;background:var(--bg);padding:12px 14px;border-radius:var(--r-sm);border-left:3px solid var(--purple)}
+.modal-close{position:absolute;top:14px;right:14px;background:var(--bg);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--muted);transition:background .15s}
+.modal-close:hover{background:var(--border)}
+.modal-actions{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* add modal */
+.add-modal{background:var(--surface);border-radius:14px;width:100%;max-width:500px;max-height:90dvh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.add-modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1}
+.add-modal-title{font-size:15px;font-weight:700}
+.add-modal-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.form-group label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:13px;outline:none;background:var(--surface);color:var(--text);transition:border-color .15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--purple)}
+.form-group textarea{min-height:80px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.search-results-list{border:1px solid var(--border);border-radius:var(--r-sm);max-height:200px;overflow-y:auto;margin-top:6px}
+.search-result-row{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)}
+.search-result-row:last-child{border-bottom:none}
+.search-result-row:hover{background:var(--purple-bg)}
+.sr-img{width:34px;height:50px;object-fit:cover;border-radius:3px;background:var(--bg);flex-shrink:0}
+.sr-info-title{font-size:12px;font-weight:600;line-height:1.4}
+.sr-info-author{font-size:11px;color:var(--muted)}
+.star-row{display:flex;gap:2px}
+.star-btn{background:none;border:none;font-size:24px;cursor:pointer;color:var(--hint);padding:0 1px;line-height:1;transition:color .1s}
+.star-btn.on{color:#fbbf24}
+.add-modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--surface)}
+
+/* buttons */
+.btn{font-size:13px;padding:7px 16px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn:hover{background:var(--bg)}
+.btn-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn-purple:hover{background:var(--purple-dark)}
+.btn-danger{color:#ef4444;border-color:#fca5a5}
+.btn-danger:hover{background:#fef2f2}
+
+/* setup */
+.setup-panel{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px}
+.setup-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.code-block{font-family:monospace;font-size:11px;background:var(--bg);padding:8px 10px;border-radius:var(--r-sm);color:var(--text);margin-top:4px;word-break:break-all;border:1px solid var(--border)}
+
+/* mobile menu btn */
+.menu-btn{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--text);padding:4px}
+
+/* empty */
+.empty{text-align:center;padding:80px 20px;color:var(--muted)}
+.empty i{font-size:48px;display:block;margin-bottom:12px;color:var(--hint)}
+.empty-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+
+/* mobile sidebar overlay */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99;backdrop-filter:blur(2px)}
+
+@media(max-width:640px){
+  .sidebar{position:fixed;left:0;top:0;height:100dvh;z-index:100;transform:translateX(-100%);box-shadow:4px 0 20px rgba(0,0,0,.15)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay.open{display:block}
+  .menu-btn{display:flex}
+  .content-area{padding:12px}
+  .card-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+  .modal-overlay{padding:8px;align-items:flex-end}
+  .detail-modal,.add-modal{border-radius:14px 14px 0 0;max-height:95dvh}
+  .setup-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="layout" id="app"></div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<script>
+const STATUS={
+  reading:{label:'읽는 중',color:'#7c5cbf',bg:'#f3effe'},
+  done:{label:'완독',color:'#3b82f6',bg:'#eff6ff'},
+  plan:{label:'예정',color:'#94a3b8',bg:'#f1f5f9'},
+  dropped:{label:'중단',color:'#ef4444',bg:'#fef2f2'}
+};
+
+// 로컬스토리지에서 데이터 불러오기
+function loadData(){
+  try{const d=localStorage.getItem('manga-db-data');return d?JSON.parse(d):getDefaultData()}
+  catch(e){return getDefaultData()}
+}
+function saveData(){
+  try{localStorage.setItem('manga-db-data',JSON.stringify(S.data))}catch(e){}
+}
+function loadSettings(){
+  try{const d=localStorage.getItem('manga-db-settings');return d?JSON.parse(d):{aladinKey:'',sheetsId:'',sheetsKey:''}}
+  catch(e){return{aladinKey:'',sheetsId:'',sheetsKey:''}}
+}
+function saveSettings(){
+  try{localStorage.setItem('manga-db-settings',JSON.stringify({aladinKey:S.aladinKey,sheetsId:S.sheetsId,sheetsKey:S.sheetsKey}))}catch(e){}
+}
+
+function getDefaultData(){
+  return [
+    {id:1,title:'황천의 초가이',author:'아라카와 히로무',cover:'',status:'reading',score:5,note:'정말 재미있음. 작가 특유의 세계관',tags:['판타지','액션'],desc:'황천에서 살아남으려는 소녀의 이야기.',date:'2026.05.07'},
+    {id:2,title:'콘즈쿠시',author:'노나라 이누유',cover:'',status:'reading',score:5,note:'치유물 최고',tags:['요리','힐링'],desc:'여우 전문 학교에 인간이 몰래 입학하는 이야기.',date:'2025.11.15'},
+    {id:3,title:'닌자와 극도',author:'콘도 신스케',cover:'',status:'reading',score:4,note:'배틀 전개가 쌈마이하지만 그게 매력',tags:['배틀','액션'],desc:'현대를 배경으로 닌자와 야쿠자가 배틀을 펼치는 만화.',date:'2025.10.16'},
+    {id:4,title:'체인소 맨',author:'후지모토 타츠키',cover:'',status:'done',score:4.5,note:'1부 완결. 전개가 미침',tags:['액션','다크'],desc:'악마 사냥꾼이 되어버린 소년의 피튀기는 액션.',date:'2025.01.01'},
+    {id:5,title:'스파이×패밀리',author:'엔도 타츠야',cover:'',status:'reading',score:4,note:'아냐 너무 귀엽다',tags:['코미디','일상'],desc:'스파이가 가족을 꾸리는 이야기.',date:'2025.03.10'},
+    {id:6,title:'헌터×헌터',author:'토가시 요시히로',cover:'',status:'reading',score:5,note:'휴재왕...그래도 기다림',tags:['배틀','판타지'],desc:'헌터가 되기 위한 소년의 모험.',date:'2024.12.01'},
+  ];
+}
+
+const settings=loadSettings();
+let S={
+  data:loadData(),
+  filterStatus:'all',
+  filterScore:'all',
+  filterTag:'all',
+  searchQ:'',
+  sortBy:'recent',
+  modal:null,
+  detailId:null,
+  addForm:emptyForm(),
+  editId:null,
+  searchResults:[],
+  searchLoading:false,
+  showSetup:false,
+  aladinKey:settings.aladinKey,
+  sheetsId:settings.sheetsId,
+  sheetsKey:settings.sheetsKey,
+};
+
+function emptyForm(){return{title:'',author:'',cover:'',isbn:'',status:'reading',score:0,note:'',tags:'',desc:''}}
+function allTags(){const s=new Set();S.data.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));return[...s]}
+function statusCount(k){return S.data.filter(m=>m.status===k).length}
+
+function filtered(){
+  let d=[...S.data];
+  if(S.filterStatus!=='all')d=d.filter(m=>m.status===S.filterStatus);
+  if(S.filterScore!=='all'){
+    if(S.filterScore==='4.5')d=d.filter(m=>m.score>=4.5);
+    else if(S.filterScore==='3.5')d=d.filter(m=>m.score>=3.5&&m.score<4.5);
+    else if(S.filterScore==='2.5')d=d.filter(m=>m.score>=2.5&&m.score<3.5);
+    else if(S.filterScore==='2')d=d.filter(m=>m.score<2.5&&m.score>0);
+  }
+  if(S.filterTag!=='all')d=d.filter(m=>(m.tags||[]).includes(S.filterTag));
+  if(S.searchQ){const q=S.searchQ.toLowerCase();d=d.filter(m=>m.title.toLowerCase().includes(q)||(m.author||'').toLowerCase().includes(q))}
+  if(S.sortBy==='score')d.sort((a,b)=>b.score-a.score);
+  else if(S.sortBy==='title')d.sort((a,b)=>a.title.localeCompare(b.title,'ko'));
+  return d;
+}
+
+function render(){
+  const d=filtered();
+  const activeFilters=[];
+  if(S.filterStatus!=='all')activeFilters.push({label:STATUS[S.filterStatus]?.label,clear:"S.filterStatus='all'"});
+  if(S.filterScore!=='all')activeFilters.push({label:'★ '+S.filterScore+' 이상',clear:"S.filterScore='all'"});
+  if(S.filterTag!=='all')activeFilters.push({label:S.filterTag,clear:"S.filterTag='all'"});
+
+  document.getElementById('app').innerHTML=`
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon"><i class="ti ti-books" aria-hidden="true"></i></div>
+    만화 데이터베이스
+  </div>
+  <button class="add-btn" onclick="openAdd()"><i class="ti ti-plus" aria-hidden="true"></i> 만화 추가</button>
+  <div class="search-wrap">
+    <i class="ti ti-search search-icon" aria-hidden="true"></i>
+    <input type="text" placeholder="검색..." value="${esc(S.searchQ)}" oninput="S.searchQ=this.value;render()">
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-item ${S.filterStatus==='all'?'active':''}" onclick="S.filterStatus='all';render();closeSidebar()">
+      전체 <span class="sidebar-count">${S.data.length}</span>
+    </div>
+  </div>
+
+  <div class="sidebar-section" style="margin-top:8px">
+    <div class="sidebar-section-title">상태</div>
+    ${Object.entries(STATUS).map(([k,v])=>`
+    <div class="sidebar-item ${S.filterStatus===k?'active':''}" onclick="S.filterStatus='${k}';render();closeSidebar()">
+      <span style="display:flex;align-items:center;gap:7px">
+        <span class="sidebar-status-dot" style="background:${v.color}"></span>${v.label}
+      </span>
+      <span class="sidebar-count">${statusCount(k)}</span>
+    </div>`).join('')}
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title" style="margin-bottom:5px">별점</div>
+    ${[['4.5','★ 4.5 이상'],['3.5','★ 3.5-4'],['2.5','★ 2.5-3'],['2','★ 2 이하']].map(([v,l])=>`
+    <div style="display:block;padding:0 0 2px">
+      <span class="sidebar-label ${S.filterScore===v?'active':''}" onclick="S.filterScore=S.filterScore==='${v}'?'all':'${v}';render();closeSidebar()">${l}</span>
+    </div>`).join('')}
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title" style="margin-bottom:5px">태그</div>
+    <div class="tags-wrap">
+      ${allTags().map(t=>`<span class="sidebar-label ${S.filterTag===t?'active':''}" onclick="S.filterTag=S.filterTag==='${t}'?'all':'${t}';render();closeSidebar()">${esc(t)}</span>`).join('')}
+    </div>
+  </div>
+
+  <hr class="sidebar-divider">
+  <div class="sidebar-section">
+    <span class="sidebar-label" onclick="S.showSetup=!S.showSetup;render()">
+      <i class="ti ti-settings" aria-hidden="true"></i> API 설정
+    </span>
+  </div>
+</div>
+
+<div class="main">
+  ${S.showSetup?renderSetup():''}
+  <div class="topbar">
+    <button class="menu-btn" onclick="openSidebar()" aria-label="메뉴 열기"><i class="ti ti-menu-2" aria-hidden="true"></i></button>
+    <div class="topbar-left">
+      <div class="filter-chips">
+        ${activeFilters.map(f=>`<span class="chip active">${esc(f.label)} <span style="opacity:.6;cursor:pointer" onclick="${f.clear};render()">✕</span></span>`).join('')}
+        ${activeFilters.length>1?`<span style="font-size:12px;color:var(--purple);cursor:pointer" onclick="S.filterStatus='all';S.filterScore='all';S.filterTag='all';render()">모두 지우기</span>`:''}
+      </div>
+    </div>
+    <select class="sort-select" onchange="S.sortBy=this.value;render()">
+      <option value="recent" ${S.sortBy==='recent'?'selected':''}>최근 추가순</option>
+      <option value="score" ${S.sortBy==='score'?'selected':''}>별점 높은순</option>
+      <option value="title" ${S.sortBy==='title'?'selected':''}>제목순</option>
+    </select>
+  </div>
+
+  <div class="content-area">
+    ${d.length===0
+      ?`<div class="empty"><i class="ti ti-books"></i><div class="empty-title">만화가 없어요</div><div>왼쪽 사이드바에서 만화를 추가해보세요</div></div>`
+      :`<div class="card-grid">${d.map(m=>`
+      <div class="manga-card" onclick="openDetail(${m.id})">
+        <div class="card-cover">
+          ${m.cover
+            ?`<img src="${esc(m.cover)}" alt="${esc(m.title)}" onerror="this.parentElement.innerHTML='<div class=\\'card-cover-placeholder\\'><i class=\\'ti ti-book-2\\'></i></div>'">`
+            :`<div class="card-cover-placeholder"><i class="ti ti-book-2" aria-hidden="true"></i></div>`}
+          ${m.score?`<div class="card-score"><i class="ti ti-star-filled" style="font-size:10px" aria-hidden="true"></i>${m.score}</div>`:''}
+        </div>
+        <div class="card-body">
+          <div class="card-title">${esc(m.title)}</div>
+          <div class="card-author">${esc(m.author||'')}</div>
+          <div class="card-footer">
+            <span class="status-badge" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>
+          </div>
+          ${(m.tags||[]).length?`<div class="card-tags">${(m.tags||[]).slice(0,3).map(t=>`<span class="card-tag">${esc(t)}</span>`).join('')}</div>`:''}
+          ${m.date?`<div class="card-date">${esc(m.date)}</div>`:''}
+        </div>
+      </div>`).join('')}</div>`
+    }
+  </div>
+</div>
+
+${S.modal==='detail'?renderDetailModal():''}
+${S.modal==='add'?renderAddModal():''}
+`;
+}
+
+function renderSetup(){
+  return`<div class="setup-panel">
+    <div class="setup-title"><i class="ti ti-settings" aria-hidden="true"></i> API 설정</div>
+    <div class="setup-grid">
+      <div class="form-group"><label>알라딘 TTBKey</label><input type="text" value="${esc(S.aladinKey)}" oninput="S.aladinKey=this.value" placeholder="TTBKey..."></div>
+      <div class="form-group"><label>구글 스프레드시트 ID</label><input type="text" value="${esc(S.sheetsId)}" oninput="S.sheetsId=this.value" placeholder="1BxiMVs0XRA..."></div>
+      <div class="form-group"><label>Google API Key</label><input type="text" value="${esc(S.sheetsKey)}" oninput="S.sheetsKey=this.value" placeholder="AIzaSy..."></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">스프레드시트 첫 행 헤더:</div>
+    <div class="code-block">id | title | author | cover | status | score | note | tags | desc | date</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button class="btn" onclick="S.showSetup=false;render()">닫기</button>
+      <button class="btn btn-purple" onclick="saveSettings();S.showSetup=false;render()">저장</button>
+    </div>
+  </div>`;
+}
+
+function renderDetailModal(){
+  const m=S.data.find(x=>x.id===S.detailId);
+  if(!m)return'';
+  return`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="detail-modal">
+    <button class="modal-close" onclick="closeModal()" aria-label="닫기"><i class="ti ti-x" aria-hidden="true"></i></button>
+    <div class="modal-top">
+      <div class="modal-cover">
+        ${m.cover?`<img src="${esc(m.cover)}" alt="${esc(m.title)}" onerror="this.parentElement.innerHTML='<i class=\\'ti ti-book-2\\' style=\\'font-size:32px\\'></i>'">`:`<i class="ti ti-book-2" style="font-size:32px" aria-hidden="true"></i>`}
+      </div>
+      <div class="modal-info">
+        <div class="modal-title">${esc(m.title)}</div>
+        <div class="modal-author">${esc(m.author||'')}</div>
+        <div class="modal-badges">
+          ${m.score?`<span class="modal-score"><i class="ti ti-star-filled" style="font-size:13px" aria-hidden="true"></i>${m.score}</span>`:''}
+          <span class="modal-status" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>
+        </div>
+        ${m.date?`<div class="modal-date">${esc(m.date)}</div>`:''}
+      </div>
+    </div>
+    ${(m.tags||[]).length?`<div class="modal-section"><div class="modal-section-title">태그</div><div class="modal-tags">${m.tags.map(t=>`<span class="modal-tag">${esc(t)}</span>`).join('')}</div></div>`:''}
+    ${m.note?`<div class="modal-section"><div class="modal-section-title">한줄평</div><div class="modal-comment">${esc(m.note)}</div></div>`:''}
+    ${m.desc?`<div class="modal-section"><div class="modal-section-title">작품 소개</div><div class="modal-desc">${esc(m.desc)}</div></div>`:''}
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteManga(${m.id})"><i class="ti ti-trash" aria-hidden="true"></i> 삭제</button>
+      <button class="btn" onclick="startEdit(${m.id})"><i class="ti ti-edit" aria-hidden="true"></i> 수정</button>
+      <button class="btn btn-purple" onclick="closeModal()">닫기</button>
+    </div>
+  </div></div>`;
+}
+
+function renderAddModal(){
+  const f=S.addForm;
+  return`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="add-modal">
+    <div class="add-modal-header">
+      <span class="add-modal-title">${S.editId?'만화 수정':'만화 추가'}</span>
+      <button class="modal-close" style="position:static" onclick="closeModal()" aria-label="닫기"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="add-modal-body">
+      <div class="form-group">
+        <label>알라딘 검색</label>
+        <div style="display:flex;gap:7px">
+          <input type="text" id="aladin-q" placeholder="만화 제목으로 검색..." style="flex:1" onkeydown="if(event.key==='Enter')doSearch()">
+          <button class="btn btn-purple" onclick="doSearch()" style="white-space:nowrap">${S.searchLoading?'검색 중...':'검색'}</button>
+        </div>
+        ${S.searchResults.length?`<div class="search-results-list">${S.searchResults.map((r,i)=>`
+        <div class="search-result-row" onclick="pickResult(${i})">
+          ${r.cover?`<img class="sr-img" src="${esc(r.cover)}" alt="" onerror="this.style.display='none'">`:``}
+          <div><div class="sr-info-title">${esc(r.title)}</div><div class="sr-info-author">${esc(r.author)}</div></div>
+        </div>`).join('')}</div>`:''}
+        ${!S.aladinKey?`<div style="font-size:11px;color:#f59e0b;margin-top:5px;display:flex;align-items:center;gap:4px"><i class="ti ti-alert-circle" style="font-size:13px" aria-hidden="true"></i>API 설정이 없으면 수동으로 입력해주세요</div>`:''}
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border)">
+      <div class="form-group"><label>제목 *</label><input type="text" value="${esc(f.title)}" oninput="S.addForm.title=this.value" placeholder="만화 제목"></div>
+      <div class="form-row">
+        <div class="form-group"><label>작가</label><input type="text" value="${esc(f.author)}" oninput="S.addForm.author=this.value" placeholder="작가명"></div>
+        <div class="form-group"><label>상태</label><select onchange="S.addForm.status=this.value">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${f.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-group">
+        <label>별점 (${f.score}/5)</label>
+        <div class="star-row">${Array.from({length:5},(_,i)=>`<button class="star-btn ${i<f.score?'on':''}" onclick="setScore(${i+1})" aria-label="${i+1}점">★</button>`).join('')}</div>
+      </div>
+      <div class="form-group"><label>태그 (쉼표 구분)</label><input type="text" value="${Array.isArray(f.tags)?f.tags.join(', '):esc(f.tags)}" oninput="S.addForm.tags=this.value" placeholder="액션, 판타지, 일상..."></div>
+      <div class="form-group"><label>한줄평</label><textarea oninput="S.addForm.note=this.value" placeholder="한 줄 감상...">${esc(f.note)}</textarea></div>
+      <div class="form-group"><label>작품 소개</label><textarea oninput="S.addForm.desc=this.value" placeholder="줄거리나 소개..." style="min-height:90px">${esc(f.desc)}</textarea></div>
+      ${f.cover?`<div style="margin-bottom:4px"><img src="${esc(f.cover)}" style="height:90px;border-radius:6px;border:1px solid var(--border)" alt="표지 미리보기"></div>`:''}
+      <div class="form-group"><label>표지 URL (직접 입력)</label><input type="text" value="${esc(f.cover)}" oninput="S.addForm.cover=this.value;render()" placeholder="https://..."></div>
+    </div>
+    <div class="add-modal-footer">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn btn-purple" onclick="saveManga()">${S.editId?'수정 완료':'추가'}</button>
+    </div>
+  </div></div>`;
+}
+
+// helpers
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function openSidebar(){document.getElementById('sidebar')?.classList.add('open');document.getElementById('sidebar-overlay')?.classList.add('open')}
+function closeSidebar(){document.getElementById('sidebar')?.classList.remove('open');document.getElementById('sidebar-overlay')?.classList.remove('open')}
+function openAdd(){S.addForm=emptyForm();S.editId=null;S.searchResults=[];S.modal='add';render()}
+function closeModal(){S.modal=null;S.detailId=null;S.editId=null;S.searchResults=[];render()}
+function openDetail(id){S.detailId=id;S.modal='detail';render()}
+function startEdit(id){
+  const m=S.data.find(x=>x.id===id);
+  S.addForm={...m,tags:(m.tags||[]).join(', ')};
+  S.editId=id;S.modal='add';render();
+}
+function setScore(n){S.addForm.score=n;render()}
+function deleteManga(id){
+  if(!confirm('삭제할까요?'))return;
+  S.data=S.data.filter(x=>x.id!==id);
+  saveData();closeModal();
+}
+function saveManga(){
+  const f=S.addForm;
+  if(!f.title.trim()){alert('제목을 입력해주세요');return}
+  const tags=typeof f.tags==='string'?f.tags.split(',').map(t=>t.trim()).filter(Boolean):(f.tags||[]);
+  const today=new Date();
+  const date=`${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+  const record={...f,tags,score:+f.score||0};
+  if(S.editId){
+    const i=S.data.findIndex(x=>x.id===S.editId);
+    if(i>=0)S.data[i]={...S.data[i],...record};
+  }else{
+    record.id=Date.now();record.date=date;
+    S.data.unshift(record);
+  }
+  saveData();
+  syncToSheets(record);
+  closeModal();
+}
+
+async function doSearch(){
+  const q=document.getElementById('aladin-q')?.value?.trim();
+  if(!q)return;
+  S.searchLoading=true;S.searchResults=[];render();
+  const el=document.getElementById('aladin-q');
+  if(el)el.value=q;
+  if(!S.aladinKey){
+    S.searchResults=[
+      {title:q+' 1권 (예시)',author:'API 키 없음 — 직접 입력해주세요',cover:'',isbn:''},
+    ];
+    S.searchLoading=false;render();return;
+  }
+  try{
+    const url=`https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${S.aladinKey}&Query=${encodeURIComponent(q)}&QueryType=Title&MaxResults=10&SearchTarget=Book&CategoryId=2551&output=js&Version=20131101`;
+    const res=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    const data=await res.json();
+    S.searchResults=(data.item||[]).map(i=>({
+      title:i.title,
+      author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
+      cover:i.cover||'',
+      isbn:i.isbn13||'',
+      desc:i.description||''
+    }));
+    if(!S.searchResults.length)S.searchResults=[{title:'검색 결과 없음',author:'다른 키워드로 시도해보세요',cover:'',isbn:''}];
+  }catch(e){
+    S.searchResults=[{title:'검색 실패',author:'네트워크 오류가 발생했습니다',cover:'',isbn:''}];
+  }
+  S.searchLoading=false;render();
+}
+
+function pickResult(i){
+  const r=S.searchResults[i];
+  S.addForm.title=r.title;
+  S.addForm.author=r.author;
+  S.addForm.cover=r.cover;
+  S.addForm.desc=r.desc||'';
+  S.searchResults=[];render();
+}
+
+async function syncToSheets(record){
+  if(!S.sheetsId||!S.sheetsKey)return;
+  try{
+    const range='Sheet1!A:J';
+    const row=[record.id,record.title,record.author,record.cover,record.status,record.score,record.note,(record.tags||[]).join(','),record.desc,record.date];
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${S.sheetsId}/values/${range}:append?valueInputOption=RAW&key=${S.sheetsKey}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({values:[row]})
+    });
+  }catch(e){}
+}
+
+render();
+</script>
+</body>
+</html>
