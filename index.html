@@ -6,6 +6,68 @@
 <meta name="theme-color" content="#7c5cbf">
 <title>만화 데이터베이스</title>
 <link rel="manifest" href="manifest.json">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyATex7v6DvFOry_pSABkliIwu2-dsCmumQ",
+    authDomain: "manhwa-db.firebaseapp.com",
+    projectId: "manhwa-db",
+    storageBucket: "manhwa-db.firebasestorage.app",
+    messagingSenderId: "317050400138",
+    appId: "1:317050400138:web:51b995621b301034b42c73"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Firestore에서 데이터 불러오기
+  async function loadFromFirestore() {
+    try {
+      const snap = await getDocs(collection(db, 'manga'));
+      const data = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      if (data.length > 0) {
+        window._firestoreData = data;
+        if (window._appReady) {
+          S.data = data;
+          saveData();
+          render();
+        }
+      }
+    } catch(e) { console.error('Firestore load error:', e); }
+  }
+
+  // Firestore에 저장
+  window.saveToFirestore = async function(record) {
+    try {
+      if (record._fsId) {
+        await setDoc(doc(db, 'manga', record._fsId), stripFsId(record));
+      } else {
+        const ref = await addDoc(collection(db, 'manga'), stripFsId(record));
+        record._fsId = ref.id;
+        const idx = S.data.findIndex(x => x.id === record.id);
+        if (idx >= 0) S.data[idx]._fsId = ref.id;
+        saveData();
+      }
+    } catch(e) { console.error('Firestore save error:', e); }
+  };
+
+  // Firestore에서 삭제
+  window.deleteFromFirestore = async function(fsId) {
+    if (!fsId) return;
+    try { await deleteDoc(doc(db, 'manga', fsId)); }
+    catch(e) { console.error('Firestore delete error:', e); }
+  };
+
+  function stripFsId(r) {
+    const {_fsId, ...rest} = r;
+    return rest;
+  }
+
+  loadFromFirestore();
+  window._firestoreReady = true;
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -388,10 +450,10 @@ function render(){
           ${m.cover
             ?`<img src="${esc(m.cover)}" alt="${esc(m.title)}" onerror="this.parentElement.innerHTML='<div class=\\'card-cover-placeholder\\'><i class=\\'ti ti-book-2\\'></i></div>'">`
             :`<div class="card-cover-placeholder"><i class="ti ti-book-2" aria-hidden="true"></i></div>`}
-          
+          ${m.score?`<div class="card-score"><i class="ti ti-star-filled" style="font-size:10px" aria-hidden="true"></i>${m.score}</div>`:''}
         </div>
         <div class="card-body">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin-bottom:2px"><div class="card-title" style="margin:0;flex:1">${esc(m.title)}</div>${m.score?`<span style="font-size:13px;font-weight:700;color:#f59e0b;white-space:nowrap;flex-shrink:0">★ ${m.score}</span>`:''}</div>
+          <div class="card-title">${esc(m.title)}</div>
           <div class="card-author">${esc(m.author||'')}</div>
           <div class="card-footer">
             <span class="status-badge" style="background:${STATUS[m.status]?.bg};color:${STATUS[m.status]?.color}">${STATUS[m.status]?.label}</span>${m.serial&&SERIAL[m.serial]?`<span class="status-badge" style="background:${SERIAL[m.serial].bg};color:${SERIAL[m.serial].color}">${SERIAL[m.serial].label}</span>`:''}
@@ -569,6 +631,8 @@ function hoverStar(e,i){
 function unhoverStar(){render();}
 function deleteManga(id){
   if(!confirm('삭제할까요?'))return;
+  const target=S.data.find(x=>x.id===id);
+  if (target && window.deleteFromFirestore) deleteFromFirestore(target._fsId);
   S.data=S.data.filter(x=>x.id!==id);
   saveData();closeModal();
 }
@@ -588,6 +652,7 @@ function saveManga(){
   }
   saveData();
   syncToSheets(record);
+  if (window.saveToFirestore) saveToFirestore(record);
   closeModal();
 }
 
@@ -688,6 +753,12 @@ async function syncToSheets(record){
   }catch(e){}
 }
 
+window._appReady = true;
+// Firestore 데이터가 이미 로드됐으면 반영
+if (window._firestoreData) {
+  S.data = window._firestoreData;
+  saveData();
+}
 render();
 </script>
 </body>
