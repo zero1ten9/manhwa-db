@@ -327,7 +327,7 @@ let S={
   sheetsKey:settings.sheetsKey,
 };
 
-function emptyForm(){return{title:'',author:'',cover:'',isbn:'',status:'reading',serial:'',score:0,note:'',tags:[],desc:''}}
+function emptyForm(){return{title:'',author:'',cover:'',isbn:'',status:'done',serial:'',score:0,note:'',tags:[],desc:''}}
 function allTags(){const s=new Set();S.data.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));return[...s]}
 function statusCount(k){return S.data.filter(m=>m.status===k).length}
 
