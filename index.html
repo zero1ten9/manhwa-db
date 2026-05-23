@@ -319,7 +319,7 @@ let S={
   detailId:null,
   addForm:emptyForm(),
   editId:null,
-  searchResults:[],
+  searchResults:[], lastSearchQ:'',
   searchLoading:false,
   showSetup:false,
   aladinKey:settings.aladinKey,
@@ -658,7 +658,7 @@ function saveManga(){
 async function doSearch(){
   const q=document.getElementById('aladin-q')?.value?.trim();
   if(!q)return;
-  S.searchLoading=true;S.searchResults=[];render();
+  S.searchLoading=true;S.searchResults=[];S.lastSearchQ=q;render();
   if(!S.aladinKey){
     S.searchResults=[{title:q+' (예시)',author:'API 키 없음 — 직접 입력해주세요',cover:'',isbn:''}];
     S.searchLoading=false;render();return;
@@ -706,7 +706,8 @@ function cleanTitle(t){
 
 function pickResult(i){
   const r=S.searchResults[i];
-  S.addForm.title=document.getElementById('aladin-q')?.value?.trim()||r.title;
+  const searchQ=document.getElementById('aladin-q')?.value?.trim()||S.lastSearchQ;
+  S.addForm.title=searchQ||r.title;
   S.addForm.author=r.author;
   S.addForm.cover=r.cover;
   S.addForm.desc=r.desc||'';
