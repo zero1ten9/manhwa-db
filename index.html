@@ -496,7 +496,7 @@ function saveManga(){
   closeModal();
 }
 
-function doSearch(){
+async function doSearch(){
   const q=document.getElementById('aladin-q')?.value?.trim();
   if(!q)return;
   S.searchLoading=true;S.searchResults=[];render();
@@ -504,29 +504,32 @@ function doSearch(){
     S.searchResults=[{title:q+' (예시)',author:'API 키 없음 — 직접 입력해주세요',cover:'',isbn:''}];
     S.searchLoading=false;render();return;
   }
-  const cbName='aladinCb_'+Date.now();
-  const old=document.getElementById('aladin-jsonp-script');
-  if(old)old.remove();
-  window[cbName]=function(data){
-    delete window[cbName];
-    S.searchResults=(data.item||[]).map(i=>({
-      title:(i.title||'').replace(/\s*\d+권\s*$/, '').replace(/\s*\(\d+\)\s*$/, '').trim(),
+  const apiUrl=`http://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${S.aladinKey}&Query=${encodeURIComponent(q)}&QueryType=Title&MaxResults=15&SearchTarget=Book&CategoryId=2551&output=js&Version=20131101`;
+  const proxies=[
+    `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`,
+  ];
+  let data=null;
+  for(const proxy of proxies){
+    try{
+      const res=await fetch(proxy);
+      const text=await res.text();
+      data=JSON.parse(text);
+      if(data&&data.item)break;
+    }catch(e){data=null;}
+  }
+  if(data&&data.item&&data.item.length){
+    S.searchResults=data.item.map(i=>({
+      title:(i.title||'').replace(/\s*\d+권\s*$/,'').replace(/\s*\(\d+\)\s*$/,'').trim(),
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
       cover:(i.cover||'').replace('coversum','coverBig').replace('cover200','coverBig'),
-      isbn:i.isbn13||'',
+      isbn:i.isbn13||i.isbn||'',
       desc:i.description||''
     }));
-    if(!S.searchResults.length)S.searchResults=[{title:'검색 결과 없음',author:'다른 키워드로 시도해보세요',cover:'',isbn:''}];
-    S.searchLoading=false;render();
-  };
-  const script=document.createElement('script');
-  script.id='aladin-jsonp-script';
-  script.onerror=function(){
-    S.searchResults=[{title:'검색 실패',author:'TTBKey를 확인해주세요',cover:'',isbn:''}];
-    S.searchLoading=false;render();
-  };
-  script.src=`https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${S.aladinKey}&Query=${encodeURIComponent(q)}&QueryType=Title&MaxResults=15&SearchTarget=Book&CategoryId=2551&output=js&Version=20131101&callback=${cbName}`;
-  document.head.appendChild(script);
+  }else{
+    S.searchResults=[{title:'검색 실패',author:'잠시 후 다시 시도해주세요',cover:'',isbn:''}];
+  }
+  S.searchLoading=false;render();
 }
 
 function pickResult(i){
@@ -541,22 +544,26 @@ function pickResult(i){
   }
 }
 
-function fetchDesc(isbn){
-  const cbName='aladinDescCb_'+Date.now();
-  const old=document.getElementById('aladin-desc-script');
-  if(old)old.remove();
-  window[cbName]=function(data){
-    delete window[cbName];
-    const item=(data.item||[])[0];
-    if(item&&item.description&&item.description.length>10){
-      S.addForm.desc=item.description;
-      render();
-    }
-  };
-  const script=document.createElement('script');
-  script.id='aladin-desc-script';
-  script.src=`https://www.aladin.co.kr/ttb/api/ItemLookUp.aspx?ttbkey=${S.aladinKey}&itemIdType=ISBN13&ItemId=${isbn}&output=js&Version=20131101&OptResult=description&callback=${cbName}`;
-  document.head.appendChild(script);
+async function fetchDesc(isbn){
+  if(!isbn||!S.aladinKey)return;
+  const apiUrl=`http://www.aladin.co.kr/ttb/api/ItemLookUp.aspx?ttbkey=${S.aladinKey}&itemIdType=ISBN13&ItemId=${isbn}&output=js&Version=20131101&OptResult=description`;
+  const proxies=[
+    `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`,
+  ];
+  for(const proxy of proxies){
+    try{
+      const res=await fetch(proxy);
+      const text=await res.text();
+      const data=JSON.parse(text);
+      const item=(data.item||[])[0];
+      if(item&&item.description&&item.description.length>10){
+        S.addForm.desc=item.description;
+        render();
+        return;
+      }
+    }catch(e){}
+  }
 }
 
 async function syncToSheets(record){
