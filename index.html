@@ -41,6 +41,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sidebar-label:hover{background:var(--purple-bg);color:var(--purple)}
 .sidebar-label.active{background:var(--purple-bg);color:var(--purple);font-weight:600}
 .tags-wrap{display:flex;flex-wrap:wrap;gap:2px;padding:0 6px}
+.sb-dropdown{margin:0 12px 8px;position:relative}
+.sb-dropdown-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);cursor:pointer;font-size:12px;color:var(--text);transition:border-color .15s;user-select:none}
+.sb-dropdown-btn:hover{border-color:var(--purple)}
+.sb-dropdown-btn.active{border-color:var(--purple);background:var(--purple-bg);color:var(--purple);font-weight:600}
+.sb-dropdown-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.1);overflow:hidden}
+.sb-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12px;cursor:pointer;transition:background .1s;color:var(--text)}
+.sb-dropdown-item:hover{background:var(--purple-bg);color:var(--purple)}
+.sb-dropdown-item.active{background:var(--purple-bg);color:var(--purple);font-weight:600}
+.sb-count{font-size:11px;background:var(--purple-bg);color:var(--purple);border-radius:10px;padding:1px 6px;font-weight:600}
+.sb-dropdown-item.active .sb-count{background:var(--purple);color:#fff}
 .tag-pick-wrap{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
 .tag-pick{font-size:12px;padding:3px 10px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;font-weight:500;transition:all .15s;user-select:none;opacity:.5}
 .tag-pick:hover{opacity:.85}
@@ -175,8 +185,8 @@ const STATUS={
   dropped:{label:'중단',color:'#ef4444',bg:'#fef2f2'}
 };
 const SERIAL={
-  ongoing:{label:'연재 중',color:'#1976d2',bg:'#e3f2fd'},
   finished:{label:'완결',color:'#388e3c',bg:'#e8f5e9'},
+  ongoing:{label:'연재 중',color:'#1976d2',bg:'#e3f2fd'},
   hiatus:{label:'연재중단',color:'#e64a19',bg:'#fbe9e7'},
 };
 const TAG_COLORS={
@@ -231,8 +241,10 @@ const settings=loadSettings();
 let S={
   data:loadData(),
   filterStatus:'all',
+  filterSerial:'all',
   filterScore:'all',
   filterTag:'all',
+  ddOpen:null,
   searchQ:'',
   sortBy:'score',
   modal:null,
@@ -260,6 +272,7 @@ function filtered(){
     else if(S.filterScore==='2.5')d=d.filter(m=>m.score>=2.5&&m.score<3.5);
     else if(S.filterScore==='2')d=d.filter(m=>m.score<2.5&&m.score>0);
   }
+  if(S.filterSerial!=='all')d=d.filter(m=>m.serial===S.filterSerial);
   if(S.filterTag!=='all')d=d.filter(m=>(m.tags||[]).includes(S.filterTag));
   if(S.searchQ){const q=S.searchQ.toLowerCase();d=d.filter(m=>m.title.toLowerCase().includes(q)||(m.author||'').toLowerCase().includes(q))}
   if(S.sortBy==='score')d.sort((a,b)=>b.score-a.score);
@@ -271,6 +284,7 @@ function render(){
   const d=filtered();
   const activeFilters=[];
   if(S.filterStatus!=='all')activeFilters.push({label:STATUS[S.filterStatus]?.label,clear:"S.filterStatus='all'"});
+  if(S.filterSerial!=='all')activeFilters.push({label:SERIAL[S.filterSerial]?.label,clear:"S.filterSerial='all'"});
   if(S.filterScore!=='all')activeFilters.push({label:'★ '+S.filterScore+' 이상',clear:"S.filterScore='all'"});
   if(S.filterTag!=='all')activeFilters.push({label:S.filterTag,clear:"S.filterTag='all'"});
 
@@ -286,31 +300,57 @@ function render(){
     <input type="text" placeholder="검색..." value="${esc(S.searchQ)}" oninput="S.searchQ=this.value;render()">
   </div>
 
-  <div class="sidebar-section">
-    <div class="sidebar-item ${S.filterStatus==='all'?'active':''}" onclick="S.filterStatus='all';render();closeSidebar()">
-      전체 <span class="sidebar-count">${S.data.length}</span>
+  <div style="padding:0 12px 8px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">상태</div>
+    <div class="sb-dropdown">
+      <div class="sb-dropdown-btn ${S.filterStatus!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='status'?null:'status';render()">
+        <span style="display:flex;align-items:center;gap:6px">
+          ${S.filterStatus!=='all'?`<span style="width:7px;height:7px;border-radius:50%;background:${STATUS[S.filterStatus]?.color};display:inline-block"></span>`:''}
+          ${S.filterStatus==='all'?'전체 ('+S.data.length+')':STATUS[S.filterStatus]?.label+' ('+statusCount(S.filterStatus)+')'}
+        </span>
+        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='status'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
+      </div>
+      ${S.ddOpen==='status'?`<div class="sb-dropdown-menu">
+        <div class="sb-dropdown-item ${S.filterStatus==='all'?'active':''}" onclick="S.filterStatus='all';S.ddOpen=null;render();closeSidebar()">전체<span class="sb-count">${S.data.length}</span></div>
+        ${Object.entries(STATUS).map(([k,v])=>`
+        <div class="sb-dropdown-item ${S.filterStatus===k?'active':''}" onclick="S.filterStatus='${k}';S.ddOpen=null;render();closeSidebar()">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>
+          <span class="sb-count">${statusCount(k)}</span>
+        </div>`).join('')}
+      </div>`:''}
     </div>
   </div>
 
-  <div class="sidebar-section" style="margin-top:8px">
-    <div class="sidebar-section-title">상태</div>
-    ${Object.entries(STATUS).map(([k,v])=>`
-    <div class="sidebar-item ${S.filterStatus===k?'active':''}" onclick="S.filterStatus='${k}';render();closeSidebar()">
-      <span style="display:flex;align-items:center;gap:7px">
-        <span class="sidebar-status-dot" style="background:${v.color}"></span>${v.label}
-      </span>
-      <span class="sidebar-count">${statusCount(k)}</span>
-    </div>`).join('')}
+  <div style="padding:0 12px 8px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">연재현황</div>
+    <div class="sb-dropdown">
+      <div class="sb-dropdown-btn ${S.filterSerial!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='serial'?null:'serial';render()">
+        <span>${S.filterSerial==='all'?'전체':SERIAL[S.filterSerial]?.label}</span>
+        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='serial'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
+      </div>
+      ${S.ddOpen==='serial'?`<div class="sb-dropdown-menu">
+        <div class="sb-dropdown-item ${S.filterSerial==='all'?'active':''}" onclick="S.filterSerial='all';S.ddOpen=null;render();closeSidebar()">전체</div>
+        ${Object.entries(SERIAL).map(([k,v])=>`
+        <div class="sb-dropdown-item ${S.filterSerial===k?'active':''}" onclick="S.filterSerial='${k}';S.ddOpen=null;render();closeSidebar()">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:${v.color};display:inline-block"></span>${v.label}</span>
+        </div>`).join('')}
+      </div>`:''}
+    </div>
   </div>
 
-  <hr class="sidebar-divider">
-
-  <div class="sidebar-section">
-    <div class="sidebar-section-title" style="margin-bottom:5px">별점</div>
-    ${[['4.5','★ 4.5 이상'],['3.5','★ 3.5-4'],['2.5','★ 2.5-3'],['2','★ 2 이하']].map(([v,l])=>`
-    <div style="display:block;padding:0 0 2px">
-      <span class="sidebar-label ${S.filterScore===v?'active':''}" onclick="S.filterScore=S.filterScore==='${v}'?'all':'${v}';render();closeSidebar()">${l}</span>
-    </div>`).join('')}
+  <div style="padding:0 12px 8px">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">별점</div>
+    <div class="sb-dropdown">
+      <div class="sb-dropdown-btn ${S.filterScore!=='all'?'active':''}" onclick="S.ddOpen=S.ddOpen==='score'?null:'score';render()">
+        <span>${S.filterScore==='all'?'전체':S.filterScore==='4.5'?'★ 4.5 이상':S.filterScore==='3.5'?'★ 3.5-4':S.filterScore==='2.5'?'★ 2.5-3':'★ 2 이하'}</span>
+        <i class="ti ti-chevron-down" style="font-size:13px;transition:transform .15s;transform:${S.ddOpen==='score'?'rotate(180deg)':'rotate(0)'}" aria-hidden="true"></i>
+      </div>
+      ${S.ddOpen==='score'?`<div class="sb-dropdown-menu">
+        <div class="sb-dropdown-item ${S.filterScore==='all'?'active':''}" onclick="S.filterScore='all';S.ddOpen=null;render();closeSidebar()">전체</div>
+        ${[['4.5','★ 4.5 이상'],['3.5','★ 3.5 - 4'],['2.5','★ 2.5 - 3'],['2','★ 2 이하']].map(([v,l])=>`
+        <div class="sb-dropdown-item ${S.filterScore===v?'active':''}" onclick="S.filterScore='${v}';S.ddOpen=null;render();closeSidebar()">${l}</div>`).join('')}
+      </div>`:''}
+    </div>
   </div>
 
   <hr class="sidebar-divider">
@@ -463,7 +503,7 @@ function renderAddModal(){
         }).join('')}</div>
       </div>
       <div class="form-group">
-        <label>연재 상태</label>
+        <label>연재현황</label>
         <div class="serial-wrap">${Object.entries(SERIAL).map(([k,v])=>`
           <button class="serial-btn ${f.serial===k?'selected':''}" onclick="S.addForm.serial=S.addForm.serial==='${k}'?'':('${k}');render()" style="${f.serial===k?'background:'+v.bg+';border-color:'+v.color+';color:'+v.color:''}">${v.label}</button>`).join('')}
         </div>
