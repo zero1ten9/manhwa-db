@@ -474,34 +474,37 @@ function saveManga(){
   closeModal();
 }
 
-async function doSearch(){
+function doSearch(){
   const q=document.getElementById('aladin-q')?.value?.trim();
   if(!q)return;
   S.searchLoading=true;S.searchResults=[];render();
-  const el=document.getElementById('aladin-q');
-  if(el)el.value=q;
   if(!S.aladinKey){
-    S.searchResults=[
-      {title:q+' 1권 (예시)',author:'API 키 없음 — 직접 입력해주세요',cover:'',isbn:''},
-    ];
+    S.searchResults=[{title:q+' (예시)',author:'API 키 없음 — 직접 입력해주세요',cover:'',isbn:''}];
     S.searchLoading=false;render();return;
   }
-  try{
-    const url=`https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${S.aladinKey}&Query=${encodeURIComponent(q)}&QueryType=Title&MaxResults=10&SearchTarget=Book&CategoryId=2551&output=js&Version=20131101`;
-    const res=await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-    const data=await res.json();
+  const cbName='aladinCb_'+Date.now();
+  const old=document.getElementById('aladin-jsonp-script');
+  if(old)old.remove();
+  window[cbName]=function(data){
+    delete window[cbName];
     S.searchResults=(data.item||[]).map(i=>({
       title:i.title,
       author:(i.author||'').replace(/\s*\(.*?\)/g,'').trim(),
-      cover:i.cover||'',
+      cover:(i.cover||'').replace('coversum','cover200'),
       isbn:i.isbn13||'',
       desc:i.description||''
     }));
     if(!S.searchResults.length)S.searchResults=[{title:'검색 결과 없음',author:'다른 키워드로 시도해보세요',cover:'',isbn:''}];
-  }catch(e){
-    S.searchResults=[{title:'검색 실패',author:'네트워크 오류가 발생했습니다',cover:'',isbn:''}];
-  }
-  S.searchLoading=false;render();
+    S.searchLoading=false;render();
+  };
+  const script=document.createElement('script');
+  script.id='aladin-jsonp-script';
+  script.onerror=function(){
+    S.searchResults=[{title:'검색 실패',author:'TTBKey를 확인해주세요',cover:'',isbn:''}];
+    S.searchLoading=false;render();
+  };
+  script.src=`https://www.aladin.co.kr/ttb/api/ItemSearch.aspx?ttbkey=${S.aladinKey}&Query=${encodeURIComponent(q)}&QueryType=Title&MaxResults=15&SearchTarget=Book&CategoryId=2551&output=js&Version=20131101&callback=${cbName}`;
+  document.head.appendChild(script);
 }
 
 function pickResult(i){
