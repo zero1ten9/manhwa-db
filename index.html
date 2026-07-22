@@ -440,7 +440,7 @@ function render(){
   <div class="sidebar-section">
     <div class="sidebar-section-title" style="margin-bottom:5px">태그</div>
     <div class="tags-wrap">
-      ${allTags().map(t=>`<span class="sidebar-label ${(S.filterTags||[]).includes(t)?'active':''}" onclick="toggleFilterTag('${t}');render();closeSidebar()">${esc(t)}</span>`).join('')}
+      ${PRESET_TAGS.map(t=>`<span class="sidebar-label ${(S.filterTags||[]).includes(t)?'active':''}" onclick="toggleFilterTag('${t}');render();closeSidebar()">${esc(t)}</span>`).join('')}
     </div>
   </div>
 
